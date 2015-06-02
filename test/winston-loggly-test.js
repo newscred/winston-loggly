@@ -10,11 +10,15 @@ var path = require('path'),
     vows = require('vows'),
     assert = require('assert'),
     winston = require('winston'),
+    sinon = require('sinon'),
     helpers = require('winston/test/helpers'),
     Loggly = require('../lib/winston-loggly').Loggly;
 
 var tokenTransport,
+    metaTransport,
     config;
+
+var testMetadata = { meta: 'data' };
 
 try {
   config = require('./config');
@@ -31,6 +35,13 @@ tokenTransport = new (Loggly)({
   token: config.transports.loggly.token
 });
 
+metaTransport = new (Loggly)({
+  subdomain: config.transports.loggly.subdomain,
+  token: config.transports.loggly.token,
+  addMeta: testMetadata 
+});
+
+
 function assertLoggly(transport) {
   assert.instanceOf(transport, Loggly);
   assert.isFunction(transport.log);
@@ -46,6 +57,16 @@ vows.describe('winston-loggly').addBatch({
         assert.isNull(err);
         assert.isTrue(logged);
       })
+    }
+  },
+}).addBatch({
+  "with addMeta": {
+    "should log the additional metadata": function () {
+      sinon.spy(winston, 'log');
+      metaTransport.log('info', 'Test', {}, function () {
+        assert.deepEqual(winston.log.getCall(0).args[0].meta, testMetadata);
+        sinon.log.restore();
+      });
     }
   }
 }).export(module);
